@@ -5,5 +5,6 @@ using AdventOfCode2022.Day04;
 using AdventOfCode2022.Day05;
 using AdventOfCode2022.Day06;
 using AdventOfCode2022.Day07;
+using AdventOfCode2022.Day10;
 
-var day = new Day07();
+var day = new Day10();
