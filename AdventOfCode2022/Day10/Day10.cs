@@ -5,7 +5,7 @@ namespace AdventOfCode2022.Day10;
 public class Instruction
 {
     public int CyclesRemaining { get; set; }
-    public int Value { get; set; }
+    public int Value { get; init; }
 }
 
 public class Day10
