@@ -14,33 +14,44 @@ public class Day12
         var startS = FindChar(grid, 'S');
         grid[startS.X][startS.Y] = 'a';
 
-        var ans = grid.SelectMany((line, i) =>
-        {
-            return line.Select((x, j) =>
-            {
-                if (x == 'a')
-                {
-                    return PerformSearch(new Coord
-                    {
-                        X = i,
-                        Y = j,
-                    }, grid);
-                }
-                return 100000;
-            });
-        }).Min();
+        var starts = FindStartingCoords(grid);
+        var ans = PerformSearch(starts, grid);
         Console.WriteLine(ans);
     }
-
-    private int PerformSearch(Coord start, List<List<char>> grid)
+    
+    private static int PerformSearch(List<Coord> starts, List<List<char>> grid)
     {
-        var searchDriver = new SearchDriver(grid, start);
-        var sn = new SearchNode(searchDriver, start, 0);
-        var minMoveLength = sn.FindAndExecuteMoves();
-        Console.WriteLine(minMoveLength);
+        var searchDriver = new SearchDriver(grid);
+        var minMoveLength = starts.Min(start =>
+        {
+            searchDriver.MinGrid[start.X][start.Y] = 0;
+            var sn = new SearchNode(searchDriver, start,0);
+            return sn.FindAndExecuteMoves();
+        });
         return minMoveLength;
     }
+    
+    private static List<Coord> FindStartingCoords(List<List<char>> grid)
+    {
+        return grid.SelectMany((line, i) =>
+            {
+                return line.Select((x, j) =>
+                {
+                    if (x == 'a')
+                    {
+                        return new Coord
+                        {
+                            X = i,
+                            Y = j,
+                        };
+                    }
 
+                    return null;
+                });
+            }).Where(s => s != null)
+            .ToList()!;
+    }
+    
     private static Coord FindChar(List<List<char>> grid, char c)
     {
         for (int i = 0; i < grid.Count; i++)
@@ -65,30 +76,20 @@ public class Day12
 public class SearchDriver
 {
     public readonly List<List<char>> Grid;
-    public SearchDriver(List<List<char>> grid, Coord start)
+    public List<List<int?>> MinGrid { get; set; }
+    public SearchDriver(List<List<char>> grid)
     {
         Grid = grid;
         MinGrid = grid.Select(line =>
         {
             return line.Select(_ => (int?) null).ToList();
         }).ToList();
-        MinGrid[start.X][start.Y] = 0;
-    }
-    public List<List<int?>> MinGrid { get; set; }
-    public void Display()
-    {
-        Console.WriteLine();
-        MinGrid.ForEach(l =>
-        {
-            var t = l.Select(i => i.HasValue ? i.ToString() : "-");
-            Console.WriteLine(string.Join(",", t));
-        });
     }
 }
 
 public class SearchNode
 {
-    public SearchDriver Driver { get; set; }
+    private SearchDriver Driver { get; set; }
     private Coord Location { get; set; }
     private int MoveCount { get; set; }
 
@@ -100,7 +101,6 @@ public class SearchNode
         Driver = driver;
         Location = location;
         MoveCount = moveCount;
-
     }
 
     public int FindAndExecuteMoves()
@@ -135,7 +135,7 @@ public class SearchNode
         return (Driver.Grid[Location.X][Location.Y] == 'E');
     }
 
-    public bool CheckMoveValid(Coord newMove)
+    private bool CheckMoveValid(Coord newMove)
     {
         return CheckSquareInBounds(newMove) &&
                CheckSquareContents(newMove) &&
