@@ -22,13 +22,8 @@ public class Day12
     private static int PerformSearch(List<Coord> starts, List<List<char>> grid)
     {
         var searchDriver = new SearchDriver(grid);
-        var minMoveLength = starts.Min(start =>
-        {
-            searchDriver.MinGrid[start.X][start.Y] = 0;
-            var sn = new SearchNode(searchDriver, start,0);
-            return sn.FindAndExecuteMoves();
-        });
-        return minMoveLength;
+        var startingNodes = starts.Select(start => new SearchNode(searchDriver, start, 0));
+        return startingNodes.Min(node => node.FindAndExecuteMoves());
     }
     
     private static List<Coord> FindStartingCoords(List<List<char>> grid)
@@ -76,28 +71,26 @@ public class Day12
 public class SearchDriver
 {
     public readonly List<List<char>> Grid;
-    public List<List<int?>> MinGrid { get; set; }
+    public List<List<int?>> MinGrid { get; }
     public SearchDriver(List<List<char>> grid)
     {
         Grid = grid;
-        MinGrid = grid.Select(line =>
-        {
-            return line.Select(_ => (int?) null).ToList();
-        }).ToList();
+        MinGrid = grid.Select(line => line.Select(_ => (int?) null).ToList()).ToList();
     }
 }
 
 public class SearchNode
 {
-    private SearchDriver Driver { get; set; }
-    private Coord Location { get; set; }
-    private int MoveCount { get; set; }
+    private SearchDriver Driver { get; }
+    private Coord Location { get; }
+    private int MoveCount { get; }
 
     public SearchNode(
         SearchDriver driver,
         Coord location,
         int moveCount)
     {
+        driver.MinGrid[location.X][location.Y] = moveCount;
         Driver = driver;
         Location = location;
         MoveCount = moveCount;
@@ -105,44 +98,33 @@ public class SearchNode
 
     public int FindAndExecuteMoves()
     {
-        if (CheckSquareForFound())
+        if (Driver.Grid[Location.X][Location.Y] == 'E')
         {
             return MoveCount;
         }
-        var possMoves = new List<Coord>
-        {
-            Location.Add(Coord.North()),
-            Location.Add(Coord.East()),
-            Location.Add(Coord.South()),
-            Location.Add(Coord.West()),
-        };
+
+        var possMoves = Coord.Coords.Select(c => Location.Add(c));
         var validMoves = possMoves.Where(CheckMoveValid).ToList();
         if (!validMoves.Any())
         {
             return 1000000000;
         }
 
-        return validMoves.Min(move =>
+        return validMoves.Min(newLocation =>
         {
-            Driver.MinGrid[move.X][move.Y] = MoveCount + 1;
-            var sn = new SearchNode(Driver, move, MoveCount + 1);
+            var sn = new SearchNode(Driver, newLocation, MoveCount + 1);
             return sn.FindAndExecuteMoves();
         });
-    }
-
-    private bool CheckSquareForFound()
-    {
-        return (Driver.Grid[Location.X][Location.Y] == 'E');
     }
 
     private bool CheckMoveValid(Coord newMove)
     {
         return CheckSquareInBounds(newMove) &&
                CheckSquareContents(newMove) &&
-               CheckSquareNotVisit(newMove);
+               CheckSquareNotBetterVisited(newMove);
     }
 
-    private bool CheckSquareNotVisit(Coord newMove)
+    private bool CheckSquareNotBetterVisited(Coord newMove)
     {
         return Driver.MinGrid[newMove.X][newMove.Y] == null ||
                MoveCount + 1 < Driver.MinGrid[newMove.X][newMove.Y];
@@ -158,9 +140,7 @@ public class SearchNode
 
     private bool CheckSquareInBounds(Coord newMove)
     {
-        return newMove.X < Driver.Grid.Count
-               && newMove.X >= 0
-                && newMove.Y < Driver.Grid[0].Count && newMove.Y >= 0;
+        return newMove.X < Driver.Grid.Count && newMove.X >= 0 && newMove.Y < Driver.Grid[0].Count && newMove.Y >= 0;
     }
 }
 
@@ -178,39 +158,11 @@ public class Coord
         };
     }
 
-    public static Coord North()
+    public static readonly List<Coord> Coords = new()
     {
-        return new Coord
-        {
-            X = -1,
-            Y = 0,
-        };
-    }
-    
-    public static Coord East()
-    {
-        return new Coord
-        {
-            X = 0,
-            Y = 1,
-        };
-    }
-    
-    public static Coord South()
-    {
-        return new Coord
-        {
-            X = 1,
-            Y = 0,
-        };
-    }
-    
-    public static Coord West()
-    {
-        return new Coord
-        {
-            X = 0,
-            Y = -1,
-        };
-    }
+        new Coord {X = -1, Y = 0,},
+        new Coord {X = 1, Y = 0,},
+        new Coord {X = 0, Y = -1,},
+        new Coord {X = 0, Y = 1,},
+    };
 }
