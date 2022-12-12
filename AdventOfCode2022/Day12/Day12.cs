@@ -14,6 +14,7 @@ public class Day12
         var startS = FindChar(grid, 'S');
         grid[startS.X][startS.Y] = 'a';
 
+        //var starts = new List<Coord> {startS};
         var starts = FindStartingCoords(grid);
         var ans = PerformSearch(starts, grid);
         Console.WriteLine(ans);
@@ -23,7 +24,8 @@ public class Day12
     {
         var searchDriver = new SearchDriver(grid);
         var startingNodes = starts.Select(start => new SearchNode(searchDriver, start, 0));
-        return startingNodes.Min(node => node.FindAndExecuteMoves());
+        searchDriver.SearchNodes.EnqueueRange(startingNodes, 0);
+        return searchDriver.ProcessNodes();
     }
     
     private static List<Coord> FindStartingCoords(List<List<char>> grid)
@@ -72,10 +74,25 @@ public class SearchDriver
 {
     public readonly List<List<char>> Grid;
     public List<List<int?>> MinGrid { get; }
+    public PriorityQueue<SearchNode, int> SearchNodes { get; set; }
     public SearchDriver(List<List<char>> grid)
     {
         Grid = grid;
         MinGrid = grid.Select(line => line.Select(_ => (int?) null).ToList()).ToList();
+        SearchNodes = new PriorityQueue<SearchNode, int>();
+    }
+
+    public int ProcessNodes()
+    {
+        while (SearchNodes.Count > 0)
+        {
+            var res = SearchNodes
+                .Dequeue()
+                .FindOrQueueMoves();
+            if (res.HasValue) return res.Value;
+        }
+
+        throw new Exception();
     }
 }
 
@@ -85,10 +102,7 @@ public class SearchNode
     private Coord Location { get; }
     private int MoveCount { get; }
 
-    public SearchNode(
-        SearchDriver driver,
-        Coord location,
-        int moveCount)
+    public SearchNode(SearchDriver driver, Coord location, int moveCount)
     {
         driver.MinGrid[location.X][location.Y] = moveCount;
         Driver = driver;
@@ -96,25 +110,25 @@ public class SearchNode
         MoveCount = moveCount;
     }
 
-    public int FindAndExecuteMoves()
+    public int? FindOrQueueMoves()
     {
         if (Driver.Grid[Location.X][Location.Y] == 'E')
         {
             return MoveCount;
         }
 
-        var possMoves = Coord.Coords.Select(c => Location.Add(c));
-        var validMoves = possMoves.Where(CheckMoveValid).ToList();
-        if (!validMoves.Any())
-        {
-            return 1000000000;
-        }
+        var validMoves = Coord.Directions
+            .Select(c => new Coord{X = Location.X + c.X, Y = Location.Y + c.Y})
+            .Where(CheckMoveValid)
+            .ToList();
 
-        return validMoves.Min(newLocation =>
+        validMoves.ForEach(newLocation =>
         {
             var sn = new SearchNode(Driver, newLocation, MoveCount + 1);
-            return sn.FindAndExecuteMoves();
+            Driver.SearchNodes.Enqueue(sn, sn.MoveCount);
         });
+
+        return null;
     }
 
     private bool CheckMoveValid(Coord newMove)
@@ -126,8 +140,7 @@ public class SearchNode
 
     private bool CheckSquareNotBetterVisited(Coord newMove)
     {
-        return Driver.MinGrid[newMove.X][newMove.Y] == null ||
-               MoveCount + 1 < Driver.MinGrid[newMove.X][newMove.Y];
+        return Driver.MinGrid[newMove.X][newMove.Y] == null || MoveCount + 1 < Driver.MinGrid[newMove.X][newMove.Y];
     }
     private bool CheckSquareContents(Coord newMove)
     {
@@ -149,16 +162,7 @@ public class Coord
     public int X { get; init; }
     public int Y { get; init; }
 
-    public Coord Add(Coord toAdd)
-    {
-        return new Coord
-        {
-            X = this.X + toAdd.X,
-            Y = this.Y + toAdd.Y,
-        };
-    }
-
-    public static readonly List<Coord> Coords = new()
+    public static readonly List<Coord> Directions = new()
     {
         new Coord {X = -1, Y = 0,},
         new Coord {X = 1, Y = 0,},
