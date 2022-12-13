@@ -23,8 +23,9 @@ public class Day12
     private static int PerformSearch(List<Coord> starts, List<List<char>> grid)
     {
         var searchDriver = new SearchDriver(grid);
-        var startingNodes = starts.Select(start => new SearchNode(searchDriver, start, 0));
-        searchDriver.SearchNodes.EnqueueRange(startingNodes, 0);
+        starts.Select(start => new SearchNode(searchDriver, start, 0))
+            .ToList()
+            .ForEach(node => searchDriver.SearchNodes.Enqueue(node));
         return searchDriver.ProcessNodes();
     }
     
@@ -74,12 +75,12 @@ public class SearchDriver
 {
     public readonly List<List<char>> Grid;
     public List<List<int?>> MinGrid { get; }
-    public PriorityQueue<SearchNode, int> SearchNodes { get; set; }
+    public Queue<SearchNode> SearchNodes { get; set; }
     public SearchDriver(List<List<char>> grid)
     {
         Grid = grid;
         MinGrid = grid.Select(line => line.Select(_ => (int?) null).ToList()).ToList();
-        SearchNodes = new PriorityQueue<SearchNode, int>();
+        SearchNodes = new Queue<SearchNode>();
     }
 
     public int ProcessNodes()
@@ -125,7 +126,7 @@ public class SearchNode
         validMoves.ForEach(newLocation =>
         {
             var sn = new SearchNode(Driver, newLocation, MoveCount + 1);
-            Driver.SearchNodes.Enqueue(sn, sn.MoveCount);
+            Driver.SearchNodes.Enqueue(sn);
         });
 
         return null;
